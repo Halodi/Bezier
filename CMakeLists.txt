@@ -3,12 +3,13 @@ project(bezier)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-
 add_compile_options(-fPIC)
+
+option(BUILD_PYTHON_MODULE "Build python module with pybind11" OFF)
 
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
-# include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
+find_package(pybind11 REQUIRED)
 
 
 ###########
@@ -22,7 +23,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include_directories(
   include
   test
-  ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 
@@ -41,12 +41,23 @@ add_library(${PROJECT_NAME}
 )
 ament_target_dependencies(${PROJECT_NAME}
   ${dependencies}
-) 
+)
+
+if(BUILD_PYTHON_MODULE)
+  # Python module
+  find_package(pybind11 REQUIRED)
+  
+  pybind11_add_module(python_bezier src/python.cpp)
+  target_compile_features(python_bezier PUBLIC cxx_std_17)
+  target_link_libraries(python_bezier PUBLIC ${PROJECT_NAME})
+  
+  set_target_properties(python_bezier PROPERTIES OUTPUT_NAME bezier)
+  set_target_properties(python_bezier PROPERTIES ARCHIVE_OUTPUT_NAME python_bezier)
+endif()
 
 #############
 ## Install ##
 #############
-
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

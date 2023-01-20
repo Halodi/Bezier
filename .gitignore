@@ -2,3 +2,6 @@ html/
 latex/
 build*/
 *.user
+bezier.cpython-38-x86_64-linux-gnu.so
+bezier.egg-info/*
+libbezier.a
