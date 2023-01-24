@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from matplotlib.widgets import TextBox
 from matplotlib.lines import Line2D
 from bezier import Curve
 import numpy as np
@@ -10,6 +11,10 @@ class Bezier:
         self.bezier = None
         self.points = np.empty(shape=[0, 2])
         self.bezier_line_object = None
+        self.total_time = 0
+
+    def set_total_time(self, time):
+        self.total_time = time
 
     def add_point(self, x, y):
         new = np.array([[x, y]])
@@ -21,7 +26,7 @@ class Bezier:
     def draw(self):
         print(self.points)
         print(self.points.shape)
-        if self.points.shape[0] >= 4:
+        if self.points.shape[0] >= 3:
             b = Curve(self.points)
             to_plot = b.polyline(1.0001, 1.0)
             x = [x for x, y in to_plot]
@@ -48,7 +53,11 @@ point_radius = 0.5
 line_object = None
 bezier_xy = np.array([])
 bezier_ever_initialized = False
+artist_fixed_control_point_dict = {}
+
 bezier = Bezier()
+
+
 
 
 # ------------------------------------------------
@@ -67,7 +76,7 @@ def on_release(event):
     global current_artist, currently_dragging, line_object, bezier
     current_artist = None
     currently_dragging = False
-    if line_object[0] is not None and len(list(line_object[0].get_xdata())) > 3:
+    if line_object is not None and len(list(line_object[0].get_xdata())) >= 3:
         bezier.clear_points()
         for i in range(len(list(line_object[0].get_xdata()))):
             bezier.add_point(
@@ -75,7 +84,6 @@ def on_release(event):
             )
 
         bezier.draw()
-
 
 # ------------------------------------------------
 def on_pick(event):
@@ -102,6 +110,10 @@ def on_pick(event):
                         # print('--->', listLabelPoints)
                         line_object[0].set_data(xdata, ydata)
                         plt.draw()
+                # elif mousepress == "left":
+                #     event.artist.set_fill(True)
+                #     new_text_box = TextBox(plt.axes([0.9, 0.5, 0.05, 0.075]), 'Time:', initial='0.5')
+                #     plt.draw()
             else:
                 x0, y0 = current_artist.center
                 x1, y1 = event.mouseevent.xdata, event.mouseevent.ydata
@@ -239,11 +251,20 @@ ax.set_xlim(-20, 20)
 ax.set_ylim(-20, 20)
 ax.set_aspect("equal")
 
+axbox = plt.axes([0.9, 0.7, 0.05, 0.075])
+text_box = TextBox(axbox, 'T Total:', initial='1')
+
+def submit(text):
+    global bezier
+    bezier.set_total_time(float(text))
+
+text_box.on_submit(submit)
+
 fig.canvas.mpl_connect("button_press_event", on_click)
 fig.canvas.mpl_connect("button_press_event", on_press)
 fig.canvas.mpl_connect("button_release_event", on_release)
 fig.canvas.mpl_connect("pick_event", on_pick)
 fig.canvas.mpl_connect("motion_notify_event", on_motion)
 
-plt.grid(True)
+ax.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()
