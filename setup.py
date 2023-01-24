@@ -5,13 +5,14 @@ import sys
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
 
+package_name = 'bezier'
 
-with open('README.md', 'r') as readme_file:
+with open("README.md", "r") as readme_file:
     long_description = readme_file.read()
 
 
 class CMakeExtension(Extension):
-    def __init__(self, name, sourcedir=''):
+    def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
 
@@ -28,38 +29,50 @@ class CMakeBuild(build_ext):
         if not extdir.endswith(os.path.sep):
             extdir += os.path.sep
 
-        build_type = os.environ.get('BUILD_TYPE', 'Release')
-        build_args = ['--config', build_type]
+        build_type = os.environ.get("BUILD_TYPE", "Release")
+        build_args = ["--config", build_type]
 
         cmake_args = [
-            '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
-            '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=' + extdir,
-            '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=' + extdir,
-            '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=' + extdir,
-            '-DPYTHON_EXECUTABLE={}'.format(sys.executable),
-            '-DEXAMPLE_VERSION_INFO={}'.format(self.distribution.get_version()),
-            '-DCMAKE_BUILD_TYPE=' + build_type,
-            '-DBUILD_PYTHON_MODULE=ON',
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + extdir,
+            "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=" + extdir,
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE=" + extdir,
+            "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE=" + extdir,
+            "-DPYTHON_EXECUTABLE={}".format(sys.executable),
+            "-DEXAMPLE_VERSION_INFO={}".format(self.distribution.get_version()),
+            "-DCMAKE_BUILD_TYPE=" + build_type,
+            "-DBUILD_PYTHON_MODULE=ON",
         ]
 
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
 
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=self.build_temp)
+        subprocess.check_call(
+            ["cmake", ext.sourcedir] + cmake_args, cwd=self.build_temp
+        )
+        subprocess.check_call(
+            ["cmake", "--build", "."] + build_args, cwd=self.build_temp
+        )
 
 
 setup(
-    name='bezier',
-    version='0.0.1',
-    description='Simple bezier curve generator and interpolator.',
+    name=package_name,
+    version="0.0.1",
+    description="Simple bezier curve generator and interpolator.",
     long_description=long_description,
-    long_description_content_type='text/markdown',
-    packages=find_packages(),
-    license='Apache',
-    ext_modules=[CMakeExtension('python_bezier')],
+    long_description_content_type="text/markdown",
+    license="Apache",
+    ext_modules=[CMakeExtension("python_bezier")],
     cmdclass=dict(build_ext=CMakeBuild),
-    keywords=['robotics'],
-    python_requires='>=3.6',
-    zip_safe=False,
+    keywords=["robotics"],
+    python_requires=">=3.6",
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    entry_points={
+        "console_scripts": [],
+    },
 )
