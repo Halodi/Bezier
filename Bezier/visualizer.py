@@ -1,11 +1,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.widgets import TextBox
+from matplotlib.widgets import Button
 from matplotlib.lines import Line2D
-from matplotlib.backend_bases import *
-import numpy as np
 from bezier_curve import *
-
 from typing import TypedDict, List
 
 
@@ -45,7 +42,36 @@ ax.set_ylim(-20, 20)
 ax.set_aspect("equal")
 
 
-def create_new_curve_definition():
+def remove_last_curve_definition(event):
+    global number_of_curves
+    if len(circle_list_list) == 0:
+        return
+
+        # remove circles
+    for circle in (circle_list_list[-1]):
+        circle.remove()
+    circle_list_list.pop()
+
+    # remove 2d line
+    line_list[-1].remove()
+    line_list.pop()
+
+    # remove bezier line
+    bezier_line_list[-1].remove()
+    bezier_line_list.pop()
+
+    # remove bezier curve
+    bezier_list.pop()
+
+    # remove label dictionaries
+    line_circle_label_list.pop()
+    line_bezier_label_list.pop()
+
+    number_of_curves -= 1
+    plt.draw()
+
+
+def create_new_curve_definition(event):
     global number_of_curves
     number_of_curves += 1
     xdata, ydata = [], []
@@ -82,9 +108,6 @@ def create_new_curve_definition():
     bezier_list.append(curve)
     line_bezier_label_list.append({'line': line_list[-1].get_label(), 'bezier': curve.get_label()})
 
-    # line_label_bezier_map.update({line.get_label(): curve})
-    # line_label_circle_label_map.update({line.get_label(): circle_list})
-    # line_label_line_obj_map.update({line.get_label(), line[0]})
     plot_bezier(curve)
     plt.draw()
 
@@ -107,16 +130,6 @@ def plot_bezier(bezier: BezierCurve):
         plt.draw()
 
 
-def on_press(event):
-    global currently_dragging
-    global mousepress
-    currently_dragging = True
-    if event.button == 3:
-        mousepress = "right"
-    elif event.button == 1:
-        mousepress = "left"
-
-
 def get_line_from_bezier_label(bezier_label: str):
     for dict_entry in line_bezier_label_list:
         if dict_entry['bezier'] == bezier_label:
@@ -134,19 +147,6 @@ def update_all_bezier_lines():
         plot_bezier(bezier)
 
 
-def on_release(event):
-    global current_artist, currently_dragging
-    current_artist = None
-    currently_dragging = False
-    # update all bezier curves
-    update_all_bezier_lines()
-    # if len(list(obj[0].get_xdata())) == max_bz_points:
-    #     c: BezierCurve = BezierCurve(
-    #         BezierControlPoints(list(obj[0].get_xdata()), list(obj[0].get_ydata())))
-    #     line_label_bezier_map.update({obj[0], c})
-    #     plot_bezier(c)
-
-
 def get_line_and_idx_containing_circle(circle_label: str):
     for label_dict in line_circle_label_list:
         idx = [i for i in range(len(label_dict['circles'])) if circle_label in label_dict['circles'][i]]
@@ -157,6 +157,23 @@ def get_line_and_idx_containing_circle(circle_label: str):
         elif len(idx) > 1:
             raise Exception("Non unique circle label in line:circle label list")
     raise Exception("Cannot find line containing this circle label")
+
+
+def on_press(event):
+    global currently_dragging
+    global mousepress
+    currently_dragging = True
+    if event.button == 3:
+        mousepress = "right"
+    elif event.button == 1:
+        mousepress = "left"
+
+
+def on_release(event):
+    global current_artist, currently_dragging
+    current_artist = None
+    currently_dragging = False
+    update_all_bezier_lines()
 
 
 def on_pick(event):
@@ -199,14 +216,19 @@ def on_motion(event):
     plt.draw()
 
 
-create_new_curve_definition()
-create_new_curve_definition()
-
-# fig.canvas.mpl_connect("button_press_event", on_click)
 fig.canvas.mpl_connect("button_press_event", on_press)
 fig.canvas.mpl_connect("button_release_event", on_release)
 fig.canvas.mpl_connect("pick_event", on_pick)
 fig.canvas.mpl_connect("motion_notify_event", on_motion)
+
+# buttons
+create_new = fig.add_axes([0.81, 0.9, 0.2, 0.075])
+create_new_bt = Button(create_new, 'Create')
+create_new_bt.on_clicked(create_new_curve_definition)
+
+remove_last = fig.add_axes([0.81, 0.7, 0.2, 0.075])
+remove_last_bt = Button(remove_last, 'Remove')
+remove_last_bt.on_clicked(remove_last_curve_definition)
 
 ax.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()

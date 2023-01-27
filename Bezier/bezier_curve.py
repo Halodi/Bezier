@@ -1,5 +1,6 @@
-from bezier import Curve
+from bezier import Curve, PolyCurve
 import numpy as np
+from typing import List
 
 
 class BezierControlPoints:
@@ -60,7 +61,7 @@ class BezierCurve:
         self.control_points.clear_points()
 
     def get_curve(self):
-        return self.bezier
+        return Curve(self.control_points.points)
 
     def set_control_points(self, control_points: BezierControlPoints):
         self.control_points = control_points
@@ -73,14 +74,40 @@ class BezierCurve:
             interpolated = b.polyline(1.0001, 1.0)
             x = [x for x, y in interpolated]
             y = [y for x, y in interpolated]
-            # (x, y) = [(x, y) for x, y in interpolated]
-            # y = [y for x, y in interpolated]
 
-            # if self.bezier_line_object is None:
-            #     self.bezier_line_object = ax.plot(
-            #         x, y, alpha=0.5, c="b", lw=2, picker=True
-            #     )
-            # else:
-            #     self.bezier_line_object[0].set_data(x, y)
-            # plt.draw()
+            return x, y
+
+
+class PolyBezierCurve:
+    def __init__(self, label: str, curves: List[BezierCurve]):
+        self.label: str = label
+        self.curves: List[Curve] = [curve.get_curve() for curve in curves]
+        self.total_time = 0.0
+
+    def get_label(self):
+        return self.label
+
+    def set_total_time(self, time: float):
+        self.total_time = time
+
+    def add_curve(self, curve: BezierCurve):
+        self.curves.append(curve.get_curve())
+
+    def clear_curves(self):
+        self.curves.clear()
+
+    def set_curves(self, curves: List[BezierCurve]):
+        self.curves = [curve.get_curve() for curve in curves]
+
+    def get_poly(self):
+        if len(self.curves) == 0:
+            raise Exception("Must have at least 1 bezier curve segment")
+        else:
+            p = PolyCurve()
+            for c in self.curves:
+                p.insertBack(c)
+            interpolated = p.polyline(1.0001, 1.0)
+            x = [x for x, y in interpolated]
+            y = [y for x, y in interpolated]
+
             return x, y
