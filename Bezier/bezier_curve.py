@@ -44,7 +44,7 @@ class BezierCurve:
         self.label = label
         self.control_points = control_points
         if control_points is None:
-            self.control_points = BezierControlPoints()
+            self.control_points = BezierControlPoints([], [])
         self.bezier_line_object = None
         self.total_time = 0
 
@@ -81,8 +81,11 @@ class BezierCurve:
 class PolyBezierCurve:
     def __init__(self, label: str, curves: List[BezierCurve]):
         self.label: str = label
-        self.curves: List[Curve] = [curve.get_curve() for curve in curves]
+        self.curves: List[BezierCurve] = curves
         self.total_time = 0.0
+
+    def get_num_segments(self):
+        return len(self.curves)
 
     def get_label(self):
         return self.label
@@ -91,13 +94,23 @@ class PolyBezierCurve:
         self.total_time = time
 
     def add_curve(self, curve: BezierCurve):
-        self.curves.append(curve.get_curve())
+        self.curves.append(curve)
 
     def clear_curves(self):
         self.curves.clear()
 
     def set_curves(self, curves: List[BezierCurve]):
-        self.curves = [curve.get_curve() for curve in curves]
+        self.curves = curves
+
+    def pop(self):
+        return self.curves.pop()
+
+    def set_curve_from_label(self, curve: BezierCurve):
+        for i in range(self.get_num_segments()):
+            if self.curves[i].get_label() == curve.get_label():
+                self.curves[i] = curve
+                return
+        raise Exception("Curve with this label not found in list of curves")
 
     def get_poly(self):
         if len(self.curves) == 0:
@@ -105,7 +118,7 @@ class PolyBezierCurve:
         else:
             p = PolyCurve()
             for c in self.curves:
-                p.insertBack(c)
+                p.insertBack(c.get_curve())
             interpolated = p.polyline(1.0001, 1.0)
             x = [x for x, y in interpolated]
             y = [y for x, y in interpolated]

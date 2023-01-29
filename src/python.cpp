@@ -21,9 +21,12 @@ class PyCurve : public Curve {
 
 class PyPolyCurve : public PolyCurve {
  public:
-  PyPolyCurve(std::vector<std::shared_ptr<Curve>>& curve_list) : PolyCurve(curve_list){};
+  PyPolyCurve() : PolyCurve(){};
 
-
+  void py_insertBack(PyCurve curve) {
+    auto ptr = std::make_shared<Curve>(curve);
+    PolyCurve::insertBack(ptr);
+  }
 };
 
 PYBIND11_MODULE(bezier, m) {
@@ -35,9 +38,9 @@ PYBIND11_MODULE(bezier, m) {
       .def("endPoints", &PyCurve::endPoints)
       .def("applyContinuity", &PyCurve::applyContinuity);
 
-  py::class_<PolyCurve>(m, "PolyCurve")
+  py::class_<PyPolyCurve>(m, "PolyCurve")
       .def(py::init<>())
-      .def("insertBack", &PolyCurve::insertBack)
-      .def("removeBack", &PolyCurve::removeBack)
-      .def("polyline", &PolyCurve::polyline);
+      .def("insertBack", &PyPolyCurve::py_insertBack)
+      .def("removeBack", &PyPolyCurve::removeBack)
+      .def("polyline", &PyPolyCurve::polyline);
 }

@@ -29,6 +29,8 @@ current_artist = None
 max_bz_points: int = 4
 number_of_curves: int = 0
 offset = []
+poly_curve = PolyBezierCurve("poly", [])
+poly_curve_line_object: List[Line2D] = []
 
 # plots
 fig, ax = plt.subplots()
@@ -66,6 +68,10 @@ def remove_last_curve_definition(event):
     # remove label dictionaries
     line_circle_label_list.pop()
     line_bezier_label_list.pop()
+
+    poly_curve.pop()
+    poly_curve_line_object[0].remove()
+    poly_curve_line_object.clear()
 
     number_of_curves -= 1
     plt.draw()
@@ -109,6 +115,10 @@ def create_new_curve_definition(event):
     line_bezier_label_list.append({'line': line_list[-1].get_label(), 'bezier': curve.get_label()})
 
     plot_bezier(curve)
+
+    poly_curve.add_curve(curve)
+    plot_poly(poly_curve)
+
     plt.draw()
 
 
@@ -130,6 +140,23 @@ def plot_bezier(bezier: BezierCurve):
         plt.draw()
 
 
+def plot_poly(poly: PolyBezierCurve):
+    if not (poly.get_num_segments() > 1):
+        return
+
+    points = poly.get_poly()
+
+    if len(poly_curve_line_object) == 1:
+        poly_curve_line_object[0].set_data(points[0], points[1])
+    elif len(poly_curve_line_object) == 0:
+        poly_curve_line_object.append(ax.plot(
+            points[0], points[1], alpha=0.5, c="k", label=poly.get_label(), lw=2, picker=True
+        )[0])
+    else:
+        raise Exception("Too many poly-curve objects")
+    plt.draw()
+
+
 def get_line_from_bezier_label(bezier_label: str):
     for dict_entry in line_bezier_label_list:
         if dict_entry['bezier'] == bezier_label:
@@ -145,6 +172,8 @@ def update_all_bezier_lines():
         line = get_line_from_bezier_label(bezier.get_label())
         bezier.set_control_points(BezierControlPoints(line.get_xdata(), line.get_ydata()))
         plot_bezier(bezier)
+        poly_curve.set_curve_from_label(bezier)
+    plot_poly(poly_curve)
 
 
 def get_line_and_idx_containing_circle(circle_label: str):
@@ -213,6 +242,7 @@ def on_motion(event):
 
         line_to_update.set_data(xdata, ydata)
         update_all_bezier_lines()
+
     plt.draw()
 
 
