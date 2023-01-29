@@ -18,8 +18,8 @@ class LineBezierLabel(TypedDict):
 
 # drag and drop helpers
 mousepress = None
-circle_list_list: List[List[patches.Circle]] = [[]]
-line_list: List[Line2D] = []
+circle_list_list: List[List[patches.Circle]] = []
+straight_line_list: List[Line2D] = []
 bezier_line_list: List[Line2D] = []
 line_circle_label_list: List[LineCircleLabel] = []
 line_bezier_label_list: List[LineBezierLabel] = []
@@ -33,15 +33,17 @@ poly_curve = PolyBezierCurve("poly", [])
 poly_curve_line_object: List[Line2D] = []
 
 # plots
-fig, ax = plt.subplots()
+fig, (ax1, ax2) = plt.subplots(1, 2)
 
-ax.set_title(
+ax1.set_title(
     "Hello retard",
     loc="left",
 )
-ax.set_xlim(-20, 20)
-ax.set_ylim(-20, 20)
-ax.set_aspect("equal")
+
+axis_scale = 20
+ax1.set_xlim(-1 * axis_scale, 1 * axis_scale)
+ax1.set_ylim(-1 * axis_scale, 1 * axis_scale)
+ax1.set_aspect("equal")
 
 
 def remove_last_curve_definition(event):
@@ -55,8 +57,8 @@ def remove_last_curve_definition(event):
     circle_list_list.pop()
 
     # remove 2d line
-    line_list[-1].remove()
-    line_list.pop()
+    straight_line_list[-1].remove()
+    straight_line_list.pop()
 
     # remove bezier line
     bezier_line_list[-1].remove()
@@ -96,23 +98,24 @@ def create_new_curve_definition(event):
             fill=False,
             lw=2,
             alpha=0.8,
-            transform=ax.transData,
+            transform=ax1.transData,
             label=label,
         )
 
         circle.set_picker(5)
-        ax.add_patch(circle)
+        ax1.add_patch(circle)
         circle_list.append(circle)
 
     circle_list_list.append(circle_list)
     # plot line through control points
-    line = ax.plot(xdata, ydata, alpha=0.5, c="r", lw=2, label="line" + str(number_of_curves), picker=True)
-    line_list.append(line[0])
+    line = ax1.plot(xdata, ydata, alpha=0.5, c="r", lw=2, label="line" + str(number_of_curves), picker=True)
+    straight_line_list.append(line[0])
     curve = BezierCurve("bezier" + str(number_of_curves),
-                        BezierControlPoints(line_list[-1].get_xdata(), line_list[-1].get_ydata()))
-    line_circle_label_list.append({'line': line_list[-1].get_label(), 'circles': [c.get_label() for c in circle_list]})
+                        BezierControlPoints(straight_line_list[-1].get_xdata(), straight_line_list[-1].get_ydata()))
+    line_circle_label_list.append(
+        {'line': straight_line_list[-1].get_label(), 'circles': [c.get_label() for c in circle_list]})
     bezier_list.append(curve)
-    line_bezier_label_list.append({'line': line_list[-1].get_label(), 'bezier': curve.get_label()})
+    line_bezier_label_list.append({'line': straight_line_list[-1].get_label(), 'bezier': curve.get_label()})
 
     plot_bezier(curve)
 
@@ -134,7 +137,7 @@ def plot_bezier(bezier: BezierCurve):
     if line_exists:
         pass
     else:
-        bezier_line_list.append(ax.plot(
+        bezier_line_list.append(ax1.plot(
             points[0], points[1], alpha=0.5, c="b", label=bezier.get_label(), lw=2, picker=True
         )[0])
         plt.draw()
@@ -149,7 +152,7 @@ def plot_poly(poly: PolyBezierCurve):
     if len(poly_curve_line_object) == 1:
         poly_curve_line_object[0].set_data(points[0], points[1])
     elif len(poly_curve_line_object) == 0:
-        poly_curve_line_object.append(ax.plot(
+        poly_curve_line_object.append(ax1.plot(
             points[0], points[1], alpha=0.5, c="k", label=poly.get_label(), lw=2, picker=True
         )[0])
     else:
@@ -160,11 +163,38 @@ def plot_poly(poly: PolyBezierCurve):
 def get_line_from_bezier_label(bezier_label: str):
     for dict_entry in line_bezier_label_list:
         if dict_entry['bezier'] == bezier_label:
-            for line in line_list:
+            for line in straight_line_list:
                 if line.get_label() == dict_entry['line']:
                     return line
 
     raise Exception("Could not find 2D line defining bezier control points")
+
+
+def enforce_continuity(event):
+    poly_segments: List[BezierCurve] = poly_curve.get_curves()
+    for idx, segment in enumerate(poly_segments[1:]):
+        last_points = poly_segments[idx].get_control_points()
+        segment.set_control_point(0, last_points[0][-1], last_points[1][-1])
+        segment.update_curve()
+
+        new_control_points = segment.get_control_points()
+        line = get_line_from_bezier_label(segment.get_label())
+        line.set_data(new_control_points[0], new_control_points[1])
+        bezier_list[idx+1] = segment
+        update_circles_in_line(line.get_label(), new_control_points[0], new_control_points[1])
+
+    update_all_bezier_lines()
+
+
+def poly_enforce_continuity(event):
+    poly_curve.apply_continuity()
+    for idx, curve in enumerate(poly_curve.get_curves()):
+        new_control_points = curve.get_control_points()
+        line = get_line_from_bezier_label(curve.get_label())
+        line.set_data(new_control_points[0], new_control_points[1])
+        bezier_list[idx] = curve
+        update_circles_in_line(line.get_label(), new_control_points[0], new_control_points[1])
+    update_all_bezier_lines()
 
 
 def update_all_bezier_lines():
@@ -173,14 +203,24 @@ def update_all_bezier_lines():
         bezier.set_control_points(BezierControlPoints(line.get_xdata(), line.get_ydata()))
         plot_bezier(bezier)
         poly_curve.set_curve_from_label(bezier)
+
+    # if len(bezier_list) > 1:
     plot_poly(poly_curve)
+
+
+def update_circles_in_line(line_label: str, x: List[float], y: List[float]):
+    for idx, label_dict in enumerate(line_circle_label_list):
+        if label_dict['line'] == line_label:
+            for idx1, circle in enumerate(circle_list_list[idx]):
+                circle.center = x[idx1], y[idx1]
+    plt.draw()
 
 
 def get_line_and_idx_containing_circle(circle_label: str):
     for label_dict in line_circle_label_list:
         idx = [i for i in range(len(label_dict['circles'])) if circle_label in label_dict['circles'][i]]
         if len(idx) == 1:
-            for line in line_list:
+            for line in straight_line_list:
                 if line.get_label() == label_dict['line']:
                     return line, idx[0]
         elif len(idx) > 1:
@@ -252,13 +292,17 @@ fig.canvas.mpl_connect("pick_event", on_pick)
 fig.canvas.mpl_connect("motion_notify_event", on_motion)
 
 # buttons
-create_new = fig.add_axes([0.81, 0.9, 0.2, 0.075])
+create_new = fig.add_axes([0.0, 0.9, 0.05, 0.075])
 create_new_bt = Button(create_new, 'Create')
 create_new_bt.on_clicked(create_new_curve_definition)
 
-remove_last = fig.add_axes([0.81, 0.7, 0.2, 0.075])
+remove_last = fig.add_axes([0.0, 0.7, 0.05, 0.075])
 remove_last_bt = Button(remove_last, 'Remove')
 remove_last_bt.on_clicked(remove_last_curve_definition)
 
-ax.grid(b=True, which='major', color='k', linestyle='-')
+make_continuous = fig.add_axes([0.0, 0.5, 0.05, 0.075])
+make_continuous_btn = Button(make_continuous, 'Continuous')
+make_continuous_btn.on_clicked(enforce_continuity)
+
+ax1.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()

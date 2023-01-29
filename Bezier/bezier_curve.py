@@ -26,6 +26,10 @@ class BezierControlPoints:
             raise Exception("Bezier curve can only have 4 points")
         self.points = np.append(self.points, np.array([[x, y]]), axis=0)
 
+    def set_point(self, idx, x, y):
+        self.points[idx, 0] = x
+        self.points[idx, 1] = y
+
     def clear_points(self):
         self.points = np.empty(shape=[0, 2])
 
@@ -40,11 +44,13 @@ class BezierControlPoints:
 class BezierCurve:
 
     def __init__(self, label: str, control_points: BezierControlPoints):
-        self.bezier = None
+        self.bezier: Curve = None
         self.label = label
         self.control_points = control_points
         if control_points is None:
             self.control_points = BezierControlPoints([], [])
+        if self.control_points.num_points() > 4:
+            self.bezier = Curve(self.control_points.points)
         self.bezier_line_object = None
         self.total_time = 0
 
@@ -56,15 +62,43 @@ class BezierCurve:
 
     def add_point(self, x, y):
         self.control_points.add_point(x, y)
+        if self.control_points.num_points() == 4:
+            self.bezier = Curve(self.control_points.points)
 
     def clear_points(self):
         self.control_points.clear_points()
+        self.bezier = None
 
     def get_curve(self):
-        return Curve(self.control_points.points)
+        if self.bezier is not None:
+            return self.bezier
+        elif self.bezier is None and self.control_points.num_points() == 4:
+            self.bezier = Curve(self.control_points.points)
+            return self.bezier
+        raise Exception("Cannot get curve when control points not established")
+
+    def get_control_points(self):
+        points = self.bezier.controlPoints()
+        x = [x for x, y in points]
+        y = [y for x, y in points]
+        return x, y
+
+    def make_continuous_with_other(self, other):
+        self.get_curve().applyContinuity(other.get_curve())
+        new_points = self.get_curve().controlPoints()
+        x = [x for x, y in new_points]
+        y = [y for x, y in new_points]
+        self.set_control_points(BezierControlPoints(x, y))
 
     def set_control_points(self, control_points: BezierControlPoints):
         self.control_points = control_points
+        self.bezier = Curve(self.control_points.points)
+
+    def set_control_point(self, idx: int, x: float, y: float):
+        self.control_points.set_point(idx, x, y)
+
+    def update_curve(self):
+        self.bezier = Curve(self.control_points.points)
 
     def get_poly(self):
         if not self.control_points.num_points() == 4:
@@ -102,6 +136,9 @@ class PolyBezierCurve:
     def set_curves(self, curves: List[BezierCurve]):
         self.curves = curves
 
+    def get_curves(self):
+        return self.curves
+
     def pop(self):
         return self.curves.pop()
 
@@ -111,6 +148,10 @@ class PolyBezierCurve:
                 self.curves[i] = curve
                 return
         raise Exception("Curve with this label not found in list of curves")
+
+    def apply_continuity(self):
+        for i in range(self.get_num_segments() - 1):
+            self.curves[i].make_continuous_with_other(self.curves[i])
 
     def get_poly(self):
         if len(self.curves) == 0:

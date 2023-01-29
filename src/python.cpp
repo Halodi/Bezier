@@ -17,6 +17,11 @@ class PyCurve : public Curve {
   PyCurve(const Eigen::MatrixX2d& points) : Curve(points) {}
 
   Curve py_derivative(uint n) const { return *Curve::derivative(n); }
+
+  void py_applyContinuity(PyCurve source_curve) {
+    std::vector<double> beta_coeffs = {1, 0, 0};
+    applyContinuity(source_curve, beta_coeffs);
+  }
 };
 
 class PyPolyCurve : public PolyCurve {
@@ -36,7 +41,7 @@ PYBIND11_MODULE(bezier, m) {
       .def("derivative", &PyCurve::py_derivative)
       .def("polyline", &PyCurve::polyline)
       .def("endPoints", &PyCurve::endPoints)
-      .def("applyContinuity", &PyCurve::applyContinuity);
+      .def("applyContinuity", &PyCurve::py_applyContinuity);
 
   py::class_<PyPolyCurve>(m, "PolyCurve")
       .def(py::init<>())
