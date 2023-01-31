@@ -2,8 +2,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.widgets import Button
 from matplotlib.lines import Line2D
-from bezier_curve import *
 from typing import TypedDict, List
+
+from bezier_curve import *
 
 
 class LineCircleLabel(TypedDict):
@@ -26,7 +27,7 @@ line_bezier_label_list: List[LineBezierLabel] = []
 bezier_list: List[BezierCurve] = []
 currently_dragging: bool = False
 current_artist = None
-max_bz_points: int = 4
+max_bz_points: int = NUM_BEZIER_POINTS
 number_of_curves: int = 0
 offset = []
 poly_curve = PolyBezierCurve("poly", [])
@@ -36,7 +37,7 @@ poly_curve_line_object: List[Line2D] = []
 fig, (ax1, ax2) = plt.subplots(1, 2)
 
 ax1.set_title(
-    "Hello retard",
+    "Bezier",
     loc="left",
 )
 
@@ -72,8 +73,9 @@ def remove_last_curve_definition(event):
     line_bezier_label_list.pop()
 
     poly_curve.pop()
-    poly_curve_line_object[0].remove()
-    poly_curve_line_object.clear()
+    if len(poly_curve_line_object) == 1:
+        poly_curve_line_object[0].remove()
+        poly_curve_line_object.clear()
 
     number_of_curves -= 1
     plt.draw()
@@ -86,7 +88,7 @@ def create_new_curve_definition(event):
 
     # plot control points
     circle_list = []
-    for i in range(4):
+    for i in range(NUM_BEZIER_POINTS):
         x, y = number_of_curves * 2, i * 2
         xdata.append(x)
         ydata.append(y)
@@ -170,17 +172,37 @@ def get_line_from_bezier_label(bezier_label: str):
     raise Exception("Could not find 2D line defining bezier control points")
 
 
-def enforce_continuity(event):
+def enforce_c0_continuity(event):
     poly_segments: List[BezierCurve] = poly_curve.get_curves()
     for idx, segment in enumerate(poly_segments[1:]):
         last_points = poly_segments[idx].get_control_points()
         segment.set_control_point(0, last_points[0][-1], last_points[1][-1])
+
         segment.update_curve()
 
         new_control_points = segment.get_control_points()
         line = get_line_from_bezier_label(segment.get_label())
         line.set_data(new_control_points[0], new_control_points[1])
-        bezier_list[idx+1] = segment
+        bezier_list[idx + 1] = segment
+        update_circles_in_line(line.get_label(), new_control_points[0], new_control_points[1])
+
+    update_all_bezier_lines()
+
+
+def enforce_c1_continuity(event):
+    enforce_c0_continuity(0)
+
+    poly_segments: List[BezierCurve] = poly_curve.get_curves()
+    for idx, segment in enumerate(poly_segments[1:]):
+        last_points = poly_segments[idx].get_control_points()
+        segment.set_control_point(1, 2 * last_points[0][-1] - last_points[0][-2],
+                                  2 * last_points[1][-1] - last_points[1][-2])
+        segment.update_curve()
+
+        new_control_points = segment.get_control_points()
+        line = get_line_from_bezier_label(segment.get_label())
+        line.set_data(new_control_points[0], new_control_points[1])
+        bezier_list[idx + 1] = segment
         update_circles_in_line(line.get_label(), new_control_points[0], new_control_points[1])
 
     update_all_bezier_lines()
@@ -300,9 +322,13 @@ remove_last = fig.add_axes([0.0, 0.7, 0.05, 0.075])
 remove_last_bt = Button(remove_last, 'Remove')
 remove_last_bt.on_clicked(remove_last_curve_definition)
 
-make_continuous = fig.add_axes([0.0, 0.5, 0.05, 0.075])
-make_continuous_btn = Button(make_continuous, 'Continuous')
-make_continuous_btn.on_clicked(enforce_continuity)
+make_c0_continuous = fig.add_axes([0.0, 0.5, 0.05, 0.075])
+make_c0_continuous_btn = Button(make_c0_continuous, 'C0')
+make_c0_continuous_btn.on_clicked(enforce_c0_continuity)
+
+make_c1_continuous = fig.add_axes([0.0, 0.3, 0.05, 0.075])
+make_c1_continuous_btn = Button(make_c1_continuous, 'C1')
+make_c1_continuous_btn.on_clicked(enforce_c1_continuity)
 
 ax1.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()

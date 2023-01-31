@@ -1,6 +1,8 @@
-from bezier import Curve, PolyCurve
+from bezier import Curve, PolyCurve, BezierSegment, BezierTrajectory2D
 import numpy as np
 from typing import List
+
+NUM_BEZIER_POINTS: int = 4  # quintic
 
 
 class BezierControlPoints:
@@ -17,13 +19,13 @@ class BezierControlPoints:
             self.add_point(point[0], point[1])
 
     def set_points(self, points: np.ndarray):
-        if self.num_points_ext(points) > 4:
+        if self.num_points_ext(points) > NUM_BEZIER_POINTS:
             raise Exception("Bezier curve can only have 4 points")
         self.points = points
 
     def add_point(self, x, y):
-        if self.num_points() == 4:
-            raise Exception("Bezier curve can only have 4 points")
+        if self.num_points() == NUM_BEZIER_POINTS:
+            raise Exception("Bezier curve can only have " + str(NUM_BEZIER_POINTS) + " points")
         self.points = np.append(self.points, np.array([[x, y]]), axis=0)
 
     def set_point(self, idx, x, y):
@@ -49,7 +51,7 @@ class BezierCurve:
         self.control_points = control_points
         if control_points is None:
             self.control_points = BezierControlPoints([], [])
-        if self.control_points.num_points() > 4:
+        if self.control_points.num_points() == NUM_BEZIER_POINTS:
             self.bezier = Curve(self.control_points.points)
         self.bezier_line_object = None
         self.total_time = 0
@@ -57,12 +59,12 @@ class BezierCurve:
     def get_label(self):
         return self.label
 
-    def set_total_time(self, time: float):
+    def set_end_time(self, time: float):
         self.total_time = time
 
     def add_point(self, x, y):
         self.control_points.add_point(x, y)
-        if self.control_points.num_points() == 4:
+        if self.control_points.num_points() == NUM_BEZIER_POINTS:
             self.bezier = Curve(self.control_points.points)
 
     def clear_points(self):
@@ -72,7 +74,7 @@ class BezierCurve:
     def get_curve(self):
         if self.bezier is not None:
             return self.bezier
-        elif self.bezier is None and self.control_points.num_points() == 4:
+        elif self.bezier is None and self.control_points.num_points() == NUM_BEZIER_POINTS:
             self.bezier = Curve(self.control_points.points)
             return self.bezier
         raise Exception("Cannot get curve when control points not established")
@@ -101,8 +103,8 @@ class BezierCurve:
         self.bezier = Curve(self.control_points.points)
 
     def get_poly(self):
-        if not self.control_points.num_points() == 4:
-            raise Exception("Bezier curve can only have 4 points")
+        if not self.control_points.num_points() == NUM_BEZIER_POINTS:
+            raise Exception("Bezier curve can only have " + str(NUM_BEZIER_POINTS) + " points")
         else:
             b = Curve(self.control_points.points)
             interpolated = b.polyline(1.0001, 1.0)
@@ -165,3 +167,13 @@ class PolyBezierCurve:
             y = [y for x, y in interpolated]
 
             return x, y
+
+
+def generate_velocity_profile(poly: PolyBezierCurve, time_resolution: float):
+    segment_list: List[BezierSegment] = [
+        BezierSegment(poly.get_curves()[0].control_points.points, 0.0, poly.get_curves()[0].total_time)]
+    for idx, curve in enumerate(poly.get_curves()[1:]):
+        segment_list.append(
+            BezierSegment(curve.control_points.points, poly.get_curves()[idx].total_time, curve.total_time))
+
+    trajectory = BezierTrajectory2D(segment_list)
