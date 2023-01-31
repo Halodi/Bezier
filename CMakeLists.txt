@@ -11,12 +11,18 @@ find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(pybind11 REQUIRED)
 
+find_package(Boost REQUIRED COMPONENTS
+        system
+        filesystem
+        log
+        log_setup
+        )
 
 ###########
 ## Build ##
 ###########
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -38,6 +44,8 @@ set(dependencies
 add_library(${PROJECT_NAME}
   src/bezier.cpp
   src/polycurve.cpp
+  src/SplineVelocity.cpp
+  src/BezierTrajectory2D.cpp
 )
 ament_target_dependencies(${PROJECT_NAME}
   ${dependencies}

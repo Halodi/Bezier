@@ -32,6 +32,7 @@ number_of_curves: int = 0
 offset = []
 poly_curve = PolyBezierCurve("poly", [])
 poly_curve_line_object: List[Line2D] = []
+velocity_line_object: List[Line2D] = []
 
 # plots
 fig, (ax1, ax2) = plt.subplots(1, 2)
@@ -45,6 +46,20 @@ axis_scale = 20
 ax1.set_xlim(-1 * axis_scale, 1 * axis_scale)
 ax1.set_ylim(-1 * axis_scale, 1 * axis_scale)
 ax1.set_aspect("equal")
+
+ax2.set_title(
+    "Velocity Profile",
+    loc="left",
+)
+
+ax2.set_xlabel("time (s)")
+ax2.set_ylabel("linear_velocity (m/s)")
+# ax2.set_aspect("auto")
+
+
+# ax2.set_xlim(-1 * axis_scale, 1 * axis_scale)
+# ax2.set_ylim(-1 * axis_scale, 1 * axis_scale)
+# ax2.set_aspect("equal")
 
 
 def remove_last_curve_definition(event):
@@ -308,6 +323,24 @@ def on_motion(event):
     plt.draw()
 
 
+def plot_velocity(event):
+    global ax2, velocity_line_object
+    time_array = [i + 1 for i in range(number_of_curves)]
+    vel_array = [i + 1 for i in range(number_of_curves)]
+    times, vels, headings = generate_velocity_profile(poly_curve, 0.1, time_array, vel_array)
+    # ax2.set_ylim(-1 * axis_scale, 1 * axis_scale)
+    if len(velocity_line_object) == 1:
+        ax2.autoscale(enable=True, axis='both', tight=None)
+        velocity_line_object[0].set_data(times, headings)
+    else:
+        velocity_line_object = ax2.plot(times, headings)
+
+    ax2.set_ylim(min(headings), max(headings))
+    ax2.autoscale(enable=True, axis='both', tight=None)
+    plt.draw()
+    print(headings)
+
+
 fig.canvas.mpl_connect("button_press_event", on_press)
 fig.canvas.mpl_connect("button_release_event", on_release)
 fig.canvas.mpl_connect("pick_event", on_pick)
@@ -329,6 +362,10 @@ make_c0_continuous_btn.on_clicked(enforce_c0_continuity)
 make_c1_continuous = fig.add_axes([0.0, 0.3, 0.05, 0.075])
 make_c1_continuous_btn = Button(make_c1_continuous, 'C1')
 make_c1_continuous_btn.on_clicked(enforce_c1_continuity)
+
+generate_velocity_profile_fig = fig.add_axes([0.0, 0.1, 0.05, 0.075])
+generate_velocity_profile_btn = Button(generate_velocity_profile_fig, 'Profile')
+generate_velocity_profile_btn.on_clicked(plot_velocity)
 
 ax1.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()

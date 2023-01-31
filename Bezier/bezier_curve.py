@@ -1,4 +1,4 @@
-from bezier import Curve, PolyCurve, BezierSegment, BezierTrajectory2D
+from bezier import Curve, PolyCurve, HermiteVelocityProfile, BezierSegment, BezierTrajectory2D
 import numpy as np
 from typing import List
 
@@ -169,11 +169,27 @@ class PolyBezierCurve:
             return x, y
 
 
-def generate_velocity_profile(poly: PolyBezierCurve, time_resolution: float):
+def generate_velocity_profile(poly: PolyBezierCurve, time_resolution: float, time_array: List[float],
+                              velocity_array: List[float]):
+    assert len(time_array) == len(velocity_array)
+    assert len(time_array) == poly.get_num_segments()
     segment_list: List[BezierSegment] = [
-        BezierSegment(poly.get_curves()[0].control_points.points, 0.0, poly.get_curves()[0].total_time)]
+        BezierSegment(poly.get_curves()[0].control_points.points,
+                      HermiteVelocityProfile(0.0, 0.0, time_array[0], velocity_array[0]))]
     for idx, curve in enumerate(poly.get_curves()[1:]):
         segment_list.append(
-            BezierSegment(curve.control_points.points, poly.get_curves()[idx].total_time, curve.total_time))
+            BezierSegment(curve.control_points.points,
+                          HermiteVelocityProfile(time_array[idx], velocity_array[idx], time_array[idx + 1],
+                                                 velocity_array[idx + 1])))
 
     trajectory = BezierTrajectory2D(segment_list)
+
+    num_ticks: float = (time_array[-1] - time_array[0]) / time_resolution
+    query_times = np.linspace(0, time_array[-1], int(num_ticks), True)
+
+    velocities, headings = [], []
+    for time in list(query_times):
+        velocities.append(trajectory.getVelocityAbs(time))
+        headings.append(trajectory.getHeading(time))
+
+    return list(query_times), velocities, headings
