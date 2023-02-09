@@ -16,7 +16,7 @@ class PyCurve : public Curve {
  public:
   PyCurve(const Eigen::MatrixX2d& points) : Curve(points) {}
 
-  Curve py_derivative(uint n) const { return *Curve::derivative(n); }
+  Curve py_derivative(int n) const { return *Curve::derivative(n); }
 
   void py_applyContinuity(PyCurve source_curve) {
     std::vector<double> beta_coeffs = {1, 0, 0};
@@ -49,17 +49,17 @@ PYBIND11_MODULE(bezier, m) {
       .def("removeBack", &PyPolyCurve::removeBack)
       .def("polyline", &PyPolyCurve::polyline);
 
-  py::class_<HermiteVelocityProfile>(m, "HermiteVelocityProfile")
-      .def(py::init<scalar_t, scalar_t, scalar_t, scalar_t>());
+    py::class_<HermiteVelocityProfile>(m, "HermiteVelocityProfile")
+        .def(py::init<scalar_t, scalar_t, scalar_t, scalar_t>());
 
-  py::class_<BezierSegment>(m, "BezierSegment")
-      .def(py::init<vector2_array_t, HermiteVelocityProfile>());
+    py::class_<BezierSegment>(m, "BezierSegment")
+        .def(py::init<vector2_array_t, HermiteVelocityProfile>());
 
-  py::class_<BezierTrajectory2D>(m, "BezierTrajectory2D")
-      .def(py::init<std::vector<BezierSegment>>())
-      .def("getPosition", &BezierTrajectory2D::getPosition)
-      .def("getHeading", &BezierTrajectory2D::getHeading)
-      .def("getVelocity", &BezierTrajectory2D::getVelocity)
-      .def("getVelocityAbs", &BezierTrajectory2D::getVelocityAbs);
-
+    py::class_<BezierTrajectory2D>(m, "BezierTrajectory2D")
+        .def(py::init<std::vector<BezierSegment>>())
+        .def("getPosition", &BezierTrajectory2D::getPosition)
+        .def("getHeading", &BezierTrajectory2D::getHeading)
+        .def("getVelocity", &BezierTrajectory2D::getVelocity)
+        .def("getVelocityAbs", &BezierTrajectory2D::getVelocityAbs)
+        .def("getAngularVelocity", &BezierTrajectory2D::getAngularVelocity);
 }

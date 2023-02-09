@@ -34,6 +34,7 @@ namespace Bezier
 class Curve
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   /*!
    * \brief Create the Bezier curve
    * \param points Nx2 matrix where each row is one of N control points that define the curve

@@ -5,11 +5,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-fPIC)
 
-option(BUILD_PYTHON_MODULE "Build python module with pybind11" OFF)
+option(BUILD_PYTHON_MODULE "Build python module with pybind11" ON)
 
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(pybind11 REQUIRED)
+find_package(ocs2_ros2_msgs REQUIRED)
 
 find_package(Boost REQUIRED COMPONENTS
         system
@@ -50,8 +51,10 @@ add_library(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME}
   ${dependencies}
 )
+target_compile_options(${PROJECT_NAME} PUBLIC ${OCS2_CXX_FLAGS})
 
-if(BUILD_PYTHON_MODULE)
+
+#if(BUILD_PYTHON_MODULE)
   # Python module
   find_package(pybind11 REQUIRED)
   
@@ -61,11 +64,18 @@ if(BUILD_PYTHON_MODULE)
   
   set_target_properties(python_bezier PROPERTIES OUTPUT_NAME bezier)
   set_target_properties(python_bezier PROPERTIES ARCHIVE_OUTPUT_NAME python_bezier)
-endif()
+#endif()
 
 #############
 ## Install ##
 #############
+ament_python_install_package(Bezier)
+install(PROGRAMS
+        Bezier/publisher.py
+        DESTINATION lib/${PROJECT_NAME}
+        )
+
+
 install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

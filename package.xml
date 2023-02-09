@@ -9,6 +9,7 @@
 
     <buildtool_depend>ament</buildtool_depend>
     <depend>eigen</depend>
+    <exec_depend>ocs2_ros2_msgs</exec_depend>
 
     <export>
       <build_type>cmake</build_type>

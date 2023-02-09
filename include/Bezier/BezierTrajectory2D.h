@@ -1,9 +1,9 @@
 #pragma once
+
 #include <Bezier/bezier.h>
 #include <Bezier/polycurve.h>
 
 #include "Bezier/SplineVelocity.h"
-
 
 using scalar_t = double;
 /** 2-size vector type. */
@@ -20,7 +20,6 @@ using matrix4_t = Eigen::Matrix<scalar_t, 4, 4>;
 
 /** Dynamic-size matrix type. */
 using matrix_t = Eigen::Matrix<scalar_t, Eigen::Dynamic, Eigen::Dynamic>;
-
 
 struct HermiteVelocityProfile {
   scalar_t desiredStartTime;
@@ -57,19 +56,26 @@ class BezierTrajectory2D {
   void setBezierSegments(std::vector<BezierSegment> bezierSegments);
 
   /// \brief Get position [x, y] in world frame at time t
-  vector2_t getPosition(scalar_t time) const { return polyCurve_.valueAt(velocityProfile_->getParameter(time)); };
+  vector2_t getPosition(scalar_t time) const { return polyCurvePtr_->valueAt(velocityProfile_->getParameter(time)); };
 
   /// \brief Get mathematically positive (CCW) heading relative to world frame at time t
   scalar_t getHeading(scalar_t time) const;
 
   /// \brief Get velocity [v_x, v_y] in world frame at time t
   vector2_t getVelocity(scalar_t time) const {
-    return polyCurve_.derivativeAt(velocityProfile_->getParameter(time)) * getPolyCurveParameterDerivative(time);
+    return polyCurvePtr_->derivativeAt(velocityProfile_->getParameter(time)) * getPolyCurveParameterDerivative(time);
+  };
+
+  /// \brief Get angular velocity around z axis of world frame at time t
+  scalar_t getAngularVelocity(scalar_t time) const {
+    return polyCurvePtr_->curvatureDerivativeAt(velocityProfile_->getParameter(time)) *
+           getPolyCurveParameterDerivative(time);
   };
 
   /// \brief Get absolute velocity along curve (positive for moving forward along the curve) at time t
   scalar_t getVelocityAbs(scalar_t time) const {
-    return polyCurve_.derivativeAt(velocityProfile_->getParameter(time)).norm() * getPolyCurveParameterDerivative(time);
+    return polyCurvePtr_->derivativeAt(velocityProfile_->getParameter(time)).norm() *
+           getPolyCurveParameterDerivative(time);
   };
 
   /// \brief the current curve parameter phi used to evaluate the underlying geometric curve. Element [n-1, n] on curve
@@ -90,7 +96,7 @@ class BezierTrajectory2D {
   int getNumberOfCurves() const { return n_curves_; }
 
  private:
-  Bezier::PolyCurve polyCurve_;                          // contains the geometric part of the reference curve
+  std::unique_ptr<Bezier::PolyCurve> polyCurvePtr_;      // contains the geometric part of the reference curve
   std::unique_ptr<SplineVelocityBase> velocityProfile_;  // contains the temporal part of the reference curve
 
   int n_curves_;

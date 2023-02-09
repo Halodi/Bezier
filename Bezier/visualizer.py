@@ -1,10 +1,12 @@
-import matplotlib.pyplot as plt
+from typing import TypedDict
+
 import matplotlib.patches as patches
-from matplotlib.widgets import Button
+import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from typing import TypedDict, List
+from matplotlib.widgets import Button
 
 from bezier_curve import *
+from publisher import BezierPublisher
 
 
 class LineCircleLabel(TypedDict):
@@ -32,11 +34,29 @@ number_of_curves: int = 0
 offset = []
 poly_curve = PolyBezierCurve("poly", [])
 poly_curve_line_object: List[Line2D] = []
-velocity_line_object: List[Line2D] = []
+lin_velocity_line_object: List[Line2D] = []
+ang_velocity_line_object: List[Line2D] = []
+publisher = BezierPublisher()
 
 # plots
-fig, (ax1, ax2) = plt.subplots(1, 2)
+fig, axs = plt.subplots(ncols=2, nrows=2)
+gs = axs[0, 0].get_gridspec()
+# remove the underlying axes
+for ax in axs[1:, 0]:
+    ax.remove()
+axbig = fig.add_subplot(gs[0:, 0])
+# axbig.annotate('Big Axes \nGridSpec[1:, -1]', (0.1, 0.5),
+#                xycoords='axes fraction', va='center')
+# f7_axs[i, j] = ith row, jth column subplot
 
+fig.tight_layout()
+
+# fig, (ax1, ax2) = plt.subplots(1, 2)
+
+ax2 = axs[0, 1]
+ax3 = axs[1, 1]
+
+ax1 = axbig
 ax1.set_title(
     "Bezier",
     loc="left",
@@ -48,12 +68,22 @@ ax1.set_ylim(-1 * axis_scale, 1 * axis_scale)
 ax1.set_aspect("equal")
 
 ax2.set_title(
-    "Velocity Profile",
+    "Linear Velocity Profile",
     loc="left",
 )
 
 ax2.set_xlabel("time (s)")
 ax2.set_ylabel("linear_velocity (m/s)")
+
+ax3.set_title(
+    "Angular Velocity Profile",
+    loc="left",
+)
+
+ax2.set_xlabel("time (s)")
+ax2.set_ylabel("ang_velocity (rad/s)")
+
+
 # ax2.set_aspect("auto")
 
 
@@ -104,7 +134,7 @@ def create_new_curve_definition(event):
     # plot control points
     circle_list = []
     for i in range(NUM_BEZIER_POINTS):
-        x, y = number_of_curves * 2, i * 2
+        x, y = i * 2, (number_of_curves - 1) * 2
         xdata.append(x)
         ydata.append(y)
         label = "circle" + str(number_of_curves) + "_" + str(i)
@@ -324,21 +354,40 @@ def on_motion(event):
 
 
 def plot_velocity(event):
-    global ax2, velocity_line_object
-    time_array = [i + 1 for i in range(number_of_curves)]
-    vel_array = [i + 1 for i in range(number_of_curves)]
-    times, vels, headings = generate_velocity_profile(poly_curve, 0.1, time_array, vel_array)
+    global ax2, ax3, lin_velocity_line_object, ang_velocity_line_object
+    time_array = [(i + 1) * 10 for i in range(number_of_curves)]
+    vel_array = [i + 1.0 for i in range(number_of_curves)]
+    times, lin_vel, ang_vel, headings = generate_velocity_profile(poly_curve, 0.01, time_array, vel_array)
     # ax2.set_ylim(-1 * axis_scale, 1 * axis_scale)
-    if len(velocity_line_object) == 1:
+    if len(lin_velocity_line_object) == 1:
         ax2.autoscale(enable=True, axis='both', tight=None)
-        velocity_line_object[0].set_data(times, headings)
+        lin_velocity_line_object[0].set_data(times, lin_vel)
     else:
-        velocity_line_object = ax2.plot(times, headings)
+        lin_velocity_line_object = ax2.plot(times, lin_vel)
 
-    ax2.set_ylim(min(headings), max(headings))
+    if len(ang_velocity_line_object) == 1:
+        ax3.autoscale(enable=True, axis='both', tight=None)
+        ang_velocity_line_object[0].set_data(times, ang_vel)
+    else:
+        ang_velocity_line_object = ax3.plot(times, ang_vel)
+
+    ax2.set_ylim(min(lin_vel), max(lin_vel))
+    ax3.set_ylim(min(ang_vel), max(ang_vel))
     ax2.autoscale(enable=True, axis='both', tight=None)
+    ax3.autoscale(enable=True, axis='both', tight=None)
     plt.draw()
-    print(headings)
+
+
+def set_curve_timings():
+    vel_array = [i + 1.0 for i in range(number_of_curves)]
+    for idx, curve in enumerate(poly_curve.get_curves()):
+        curve.total_time = float(10)
+        curve.end_velocity = float(vel_array[idx])
+
+
+def publish_trajectory(event):
+    set_curve_timings()
+    publisher.publish(poly_curve.to_msg())
 
 
 fig.canvas.mpl_connect("button_press_event", on_press)
@@ -366,6 +415,10 @@ make_c1_continuous_btn.on_clicked(enforce_c1_continuity)
 generate_velocity_profile_fig = fig.add_axes([0.0, 0.1, 0.05, 0.075])
 generate_velocity_profile_btn = Button(generate_velocity_profile_fig, 'Profile')
 generate_velocity_profile_btn.on_clicked(plot_velocity)
+
+publish_fig = fig.add_axes([0.5, 0.1, 0.05, 0.075])
+publish_btn = Button(publish_fig, 'Publish')
+publish_btn.on_clicked(publish_trajectory)
 
 ax1.grid(b=True, which='major', color='k', linestyle='-')
 plt.show()

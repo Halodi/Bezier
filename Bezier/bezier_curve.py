@@ -1,8 +1,13 @@
-from bezier import Curve, PolyCurve, HermiteVelocityProfile, BezierSegment, BezierTrajectory2D
-import numpy as np
 from typing import List
 
-NUM_BEZIER_POINTS: int = 4  # quintic
+import numpy as np
+from bezier import Curve, PolyCurve, HermiteVelocityProfile, BezierSegment, BezierTrajectory2D
+from geometry_msgs.msg import Vector3
+
+from ocs2_ros2_msgs.msg import BezierSegment as SegmentMsg
+from ocs2_ros2_msgs.msg import BezierTrajectory
+
+NUM_BEZIER_POINTS: int = 4  # cubic
 
 
 class BezierControlPoints:
@@ -54,7 +59,9 @@ class BezierCurve:
         if self.control_points.num_points() == NUM_BEZIER_POINTS:
             self.bezier = Curve(self.control_points.points)
         self.bezier_line_object = None
-        self.total_time = 0
+        self.total_time = 0.0
+        self.start_velocity = 0.0
+        self.end_velocity: float = 0.0
 
     def get_label(self):
         return self.label
@@ -132,6 +139,12 @@ class PolyBezierCurve:
     def add_curve(self, curve: BezierCurve):
         self.curves.append(curve)
 
+    def add_curve_with_parameters(self, curve: BezierCurve, total_time, start_velocity, end_velocity):
+        curve.total_time = total_time
+        curve.start_velocity = start_velocity
+        curve.end_velocity = end_velocity
+        self.curves.append(curve)
+
     def clear_curves(self):
         self.curves.clear()
 
@@ -168,6 +181,39 @@ class PolyBezierCurve:
 
             return x, y
 
+    def to_msg(self):
+        time_array: List[float] = [0.]
+        vel_array: List[float] = [0.]
+        msg = BezierTrajectory()
+        for idx, curve in enumerate(self.curves):
+            segment = self.default_segment_msg()
+            segment.start_time = time_array[idx]
+            time_array.append(time_array[idx] + curve.total_time)
+            segment.end_time = time_array[idx + 1]
+            segment.start_velocity = vel_array[idx]
+            vel_array.append(curve.end_velocity)
+            print(type(vel_array[idx + 1]))
+            segment.end_velocity = vel_array[idx + 1]
+            x, y = curve.get_control_points()
+            segment.control_points = [self.point_msg(x[i], y[i]) for i in range(len(x))]
+            msg.trajectory.append(segment)
+        return msg
+
+    @staticmethod
+    def default_segment_msg():
+        msg = SegmentMsg()
+        msg.dimension = 2
+        msg.use_relative_position = True
+        msg.use_relative_time = True
+        return msg
+
+    @staticmethod
+    def point_msg(x, y):
+        msg = Vector3()
+        msg.x = x
+        msg.y = y
+        return msg
+
 
 def generate_velocity_profile(poly: PolyBezierCurve, time_resolution: float, time_array: List[float],
                               velocity_array: List[float]):
@@ -187,9 +233,10 @@ def generate_velocity_profile(poly: PolyBezierCurve, time_resolution: float, tim
     num_ticks: float = (time_array[-1] - time_array[0]) / time_resolution
     query_times = np.linspace(0, time_array[-1], int(num_ticks), True)
 
-    velocities, headings = [], []
+    abs_vel, headings, ang_vel = [], [], []
     for time in list(query_times):
-        velocities.append(trajectory.getVelocityAbs(time))
+        abs_vel.append(trajectory.getVelocityAbs(time))
         headings.append(trajectory.getHeading(time))
+        ang_vel.append(trajectory.getAngularVelocity(time))
 
-    return list(query_times), velocities, headings
+    return list(query_times), abs_vel, ang_vel, headings
