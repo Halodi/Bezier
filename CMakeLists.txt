@@ -11,6 +11,7 @@ find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(pybind11 REQUIRED)
 find_package(ocs2_ros2_msgs REQUIRED)
+find_package (Python3 COMPONENTS Interpreter Development)
 
 find_package(Boost REQUIRED COMPONENTS
         system
